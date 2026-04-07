@@ -140,7 +140,17 @@
             box-shadow: 0 10px 20px -10px rgba(255, 255, 255, 0.3);
         }
 
-        /* Added Google OAuth Styles for Signup */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 0.8rem;
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        /* Google button styles */
         .divider {
             display: flex; align-items: center; color: var(--text-dim); font-size: 0.8rem; margin: 25px 0;
         }
@@ -171,16 +181,6 @@
             box-shadow: 0 10px 20px -10px rgba(255, 255, 255, 0.1);
         }
         .google-icon { width: 20px; height: 20px; margin-right: 10px; }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            font-size: 0.8rem;
-            background: rgba(239, 68, 68, 0.1);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.15);
-        }
 
         .footer-links {
             margin-top: 32px;
@@ -217,14 +217,9 @@
                 <label>CORE EMAIL</label>
                 <input type="email" name="email" placeholder="agent@andse.ai" required>
             </div>
-            <div class="input-group">
-                <label>NEW ACCESS KEY</label>
-                <input type="password" name="password" placeholder="Min. 8 characters" required>
-            </div>
             <button type="submit" class="btn-primary">Initialize Protocol</button>
         </form>
 
-        <!-- Added Google OAuth Integration -->
         <div class="divider"><span>OR ACCESS VIA</span></div>
 
         <a href="{{ url_for('auth.google_login') }}" class="btn-google">
