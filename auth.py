@@ -23,7 +23,7 @@ from flask_login import (
     login_required, 
     current_user
 )
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 from flask_mail import Message
 
 # Internal Module Imports
@@ -126,12 +126,9 @@ def send_verification_email(user_email, code):
 @auth_bp.route('/login/google')
 def google_login():
     """Starts the Google OAuth 2.0 handshake."""
-    # Force the explicit production URL redirect as requested unless running on local dev
-    if "localhost" in request.host or "127.0.0.1" in request.host:
-        redirect_uri = url_for('auth.google_callback', _external=True)
-    else:
-        redirect_uri = f"https://andse-ai-kvr0.onrender.com{url_for('auth.google_callback')}"
-        
+    # Handle both local dev (http) and Render prod (https)
+    scheme = 'https' if os.environ.get('RENDER') or request.headers.get('X-Forwarded-Proto') == 'https' else 'http'
+    redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
     return oauth.google.authorize_redirect(redirect_uri, prompt='consent')
 
 @auth_bp.route('/login/google/callback')
@@ -167,21 +164,20 @@ def google_callback():
         return redirect(url_for('auth.login'))
 
 # ==========================================
-# STANDARD AUTHENTICATION FLOW
+# STANDARD AUTHENTICATION FLOW (PASSWORDLESS)
 # ==========================================
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """Initializes a new user protocol."""
+    """Initializes a new passwordless user protocol."""
     if current_user.is_authenticated:
         return redirect(url_for('chat.interface'))
         
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password')
         
-        if not email or not password:
-            flash("All data fields are mandatory.")
+        if not email:
+            flash("Email field is mandatory.")
             return redirect(url_for('auth.signup'))
 
         if User.query.filter_by(email=email).first():
@@ -191,10 +187,12 @@ def signup():
         # Security: Generate 6-digit numeric OTP
         verification_code = ''.join(random.choices(string.digits, k=6))
         
-        # Create user in unverified state
+        # Create user with a dummy secure hash since passwords are no longer used
+        secure_pwd_stub = generate_password_hash(f"PWDLESS_{random.getrandbits(256)}")
+        
         new_user = User(
             email=email, 
-            password_hash=generate_password_hash(password), 
+            password_hash=secure_pwd_stub, 
             is_verified=False, 
             verification_code=verification_code
         )
@@ -224,7 +222,7 @@ def signup():
 
 @auth_bp.route('/verify', methods=['GET', 'POST'])
 def verify_page():
-    """Handles the 2FA / Email Verification stage."""
+    """Handles the OTP / Email Verification stage for login and signup."""
     if 'pending_email' not in session:
         return redirect(url_for('auth.login'))
         
@@ -237,11 +235,16 @@ def verify_page():
         if user and user.verification_code == submitted_code:
             user.is_verified = True
             user.verification_code = None
+            
+            # Record login timestamp
+            if hasattr(user, 'last_login'):
+                user.last_login = datetime.utcnow() 
+                
             db.session.commit()
             
             login_user(user)
             session.pop('pending_email', None)
-            logger.info(f"⚡ Identity Verified: {email}")
+            logger.info(f"⚡ Identity Verified & Session Started: {email}")
             return redirect(url_for('chat.interface'))
         
         flash("❌ Invalid Verification Protocol. Access Denied.")
@@ -250,36 +253,28 @@ def verify_page():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Entry point for the Secure Neural Terminal."""
+    """Entry point for the Passwordless Secure Neural Terminal."""
     if current_user.is_authenticated:
         return redirect(url_for('chat.interface'))
         
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password')
         
         user = User.query.filter_by(email=email).first()
         
-        if user and check_password_hash(user.password_hash, password):
-            # Enforce verification before login
-            if not user.is_verified:
-                session['pending_email'] = email
-                new_otp = ''.join(random.choices(string.digits, k=6))
-                user.verification_code = new_otp
-                db.session.commit()
-                send_verification_email(email, new_otp)
-                flash("Identity not verified. New code dispatched.")
-                return redirect(url_for('auth.verify_page'))
-            
-            login_user(user)
-            user.last_login = datetime.utcnow() # Track last login if field exists
+        if user:
+            # Generate new OTP and dispatch it
+            session['pending_email'] = email
+            new_otp = ''.join(random.choices(string.digits, k=6))
+            user.verification_code = new_otp
             db.session.commit()
             
-            logger.info(f"🔓 Successful Login: {email}")
-            return redirect(url_for('chat.interface'))
+            send_verification_email(email, new_otp)
+            flash("Verification code dispatched to your neural link.")
+            return redirect(url_for('auth.verify_page'))
             
         logger.warning(f"🛡️ Unauthorized Access attempt: {email}")
-        flash("❌ Invalid credentials or access key.")
+        flash("❌ Identity not found. Please create a protocol.")
         
     return render_template('login.html')
 
