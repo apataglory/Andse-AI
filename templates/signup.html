@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANDSE AI | New Neural Identity</title>
+    
+    <!-- GOOGLE VERIFICATION TAG -->
+    <meta name="google-site-verification" content="dNEmUYsLJDXJwywYmPBmRwfKKksTHVQCRXou-DQVLPk" />
+
+    <!-- Standard Favicon for Browser Tabs -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <!-- Icon for Mobile Shortcuts (iPhone/Android) -->
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #030303;
+            --accent: #8b5cf6;
+            --accent-blue: #3b82f6;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #f4f4f5;
+            --text-dim: #a1a1aa;
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1), transparent 40%),
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1), transparent 40%);
+        }
+
+        body::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 50px 50px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            opacity: 0.15;
+            z-index: -1;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 400px;
+            padding: 48px 40px;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
+            text-align: center;
+            position: relative;
+        }
+
+        .login-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 20%; right: 20%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--accent-blue), transparent);
+            filter: blur(1px);
+        }
+
+        .logo {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle { 
+            color: var(--text-dim); 
+            font-size: 0.85rem; 
+            margin-bottom: 32px; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+
+        .input-group { margin-bottom: 18px; text-align: left; }
+        label { 
+            display: block; 
+            font-size: 0.7rem; 
+            color: var(--text-dim); 
+            margin-bottom: 8px; 
+            font-weight: 600;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: white;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            margin-top: 24px;
+            background: var(--text-main);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover { 
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(255, 255, 255, 0.3);
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 0.8rem;
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .footer-links {
+            margin-top: 32px;
+        }
+
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="logo">ANDSE AI</div>
+        <div class="subtitle">Identity Initializer</div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">
+                    <i class="fas fa-fingerprint"></i>
+                    <span>{{ messages[0] }}</span>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="input-group">
+                <label>CORE EMAIL</label>
+                <input type="email" name="email" placeholder="agent@andse.ai" required>
+            </div>
+            <div class="input-group">
+                <label>NEW ACCESS KEY</label>
+                <input type="password" name="password" placeholder="Min. 8 characters" required>
+            </div>
+            <button type="submit" class="btn-primary">Initialize Protocol</button>
+        </form>
+
+        <div class="footer-links">
+            <a href="{{ url_for('auth.login') }}">Return to Secure Terminal</a>
+        </div>
+    </div>
+</body>
+</html>
+

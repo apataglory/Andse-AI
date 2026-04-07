@@ -1,0 +1,78 @@
+/* --- Ultra-Smooth Transitions --- */
+* {
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* --- The Glassmorphism Effect --- */
+.glass-panel {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- AI Streaming Text Animation --- */
+/* Makes text fade in slightly as it appears character by character */
+.message-content {
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+}
+
+.message-content p {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Custom Scrollbar (Cyberpunk Style) --- */
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #030712;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* --- Code Block Styling --- */
+pre {
+    background: #0f172a !important;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    border: 1px solid #1e293b;
+    position: relative;
+    overflow-x: auto;
+}
+
+code {
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.875rem;
+}
+
+/* --- Neon Glows --- */
+.glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.pulse-red {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Verify | ANDSE AI{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+        <h2 style="margin: 0;">Check your email</h2>
+        <p style="color: var(--text-muted);">We sent a verification code to your inbox.</p>
+    </div>
+
+    <form action="/auth/verify" method="POST">
+        <div style="text-align: center;">
+            <label style="display: block; margin-bottom: 15px; font-weight: 500;">Verification Code</label>
+            <input type="text" name="code" maxlength="6" class="form-control" 
+                   style="font-size: 2rem; text-align: center; letter-spacing: 10px; font-weight: 700;" 
+                   placeholder="000000" autofocus required>
+        </div>
+        
+        <button type="submit" class="btn-primary">Verify Account</button>
+    </nav>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Didn't receive it? <a href="/auth/resend-code" style="color: var(--accent); text-decoration: none;">Resend Code</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

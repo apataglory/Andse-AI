@@ -1,0 +1,12 @@
+flask
+flask-sqlalchemy
+flask-login
+flask-socketio
+google-genai
+groq
+authlib
+requests
+gevent
+gevent-websocket
+python-dotenv
+gunicorn

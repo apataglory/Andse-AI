@@ -1,0 +1,42 @@
+/* Optimized Root Variables */
+:root {
+    --bg-dark: #030712;
+    --panel-dark: #111827;
+    --accent-blue: #3b82f6;
+    --border-dim: rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-dim);
+}
+
+/* Custom Scrollbar for Intelligence Archive */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-blue);
+}
+
+/* Animated Gradient Text */
+.text-gradient {
+    background: linear-gradient(to right, #60a5fa, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Tooltip & Message Animations */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.message-animate {
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
