@@ -52,3 +52,4 @@ typing-extensions>=4.11.0
 idna
 certifi
 six
+psycopg2-binary==2.9.9
