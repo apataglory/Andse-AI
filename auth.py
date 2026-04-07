@@ -126,9 +126,12 @@ def send_verification_email(user_email, code):
 @auth_bp.route('/login/google')
 def google_login():
     """Starts the Google OAuth 2.0 handshake."""
-    # Handle both local dev (http) and Render prod (https)
-    scheme = 'https' if os.environ.get('RENDER') or request.headers.get('X-Forwarded-Proto') == 'https' else 'http'
-    redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
+    # Force the explicit production URL redirect as requested unless running on local dev
+    if "localhost" in request.host or "127.0.0.1" in request.host:
+        redirect_uri = url_for('auth.google_callback', _external=True)
+    else:
+        redirect_uri = f"https://andse-ai-kvr0.onrender.com{url_for('auth.google_callback')}"
+        
     return oauth.google.authorize_redirect(redirect_uri, prompt='consent')
 
 @auth_bp.route('/login/google/callback')
