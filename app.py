@@ -129,7 +129,11 @@ def create_app():
     @app.route('/')
     def index():
         if current_user.is_authenticated:
-            return redirect(url_for('chat.interface'))
+            # Safely check if the chat module is active before redirecting
+            if 'chat.interface' in [rule.endpoint for rule in app.url_map.iter_rules()]:
+                return redirect(url_for('chat.interface'))
+            else:
+                return "<h1>System Active</h1><p>You are logged in, but the Chat Interface module is not connected yet.</p>"
         return render_template('login.html')
 
     @app.route('/system/status')
@@ -150,6 +154,20 @@ def create_app():
             logger.info("✅ Database tables verified/created in Neon PostgreSQL.")
         except Exception as e:
             logger.error(f"❌ Database creation error: {e}")
+
+    # --- DIAGNOSTIC MODE: CATCH ALL ERRORS AND DISPLAY THEM ---
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        import traceback
+        error_trace = traceback.format_exc()
+        return f"""
+        <div style="background:#0f0f11; color:#fff; font-family:monospace; padding:40px; border-radius:10px; height: 100vh;">
+            <h2 style="color:#ef4444;">🚨 Application Crash Detected 🚨</h2>
+            <p style="color:#a1a1aa;">The server encountered an error. Please copy the green text below and show it to the AI:</p>
+            <hr style="border-color:#27272a;">
+            <pre style="color:#22c55e; overflow-x:auto; background:#000; padding: 20px;">{error_trace}</pre>
+        </div>
+        """, 500
 
     return app
 
