@@ -4,6 +4,7 @@ import string
 import logging
 import traceback
 from datetime import datetime
+from threading import Thread
 
 from flask import (
     Blueprint, 
@@ -35,11 +36,9 @@ from authlib.integrations.flask_client import OAuth
 # AUTH CONFIGURATION & CORE INITIALIZATION
 # ==========================================
 
-# Create the Blueprint - Ensure app.py uses: from auth import auth_bp
 auth_bp = Blueprint('auth', __name__)
 oauth = OAuth()
 
-# Configure Logging for Security Auditing
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -64,60 +63,64 @@ def configure_oauth(app):
 
 @auth_bp.route('/favicon.ico')
 def favicon():
-    """
-    Serves the site logo (favicon) for browser tabs and home screen shortcuts.
-    Critical for the 'ChatGPT/Gemini' professional look.
-    """
     return send_from_directory(
         os.path.join(current_app.root_path, 'static'),
         'favicon.ico', 
         mimetype='image/vnd.microsoft.icon'
     )
 
+def send_async_email(app, msg, user_email, code):
+    """Background task to send email so it doesn't freeze the UI."""
+    with app.app_context():
+        try:
+            mail.send(msg)
+            logger.info(f"✅ Security Code Successfully Delivered to {user_email}")
+        except Exception as e:
+            logger.error(f"❌ CRITICAL EMAIL FAILURE: {str(e)}")
+            # Fallback: Print to Render console so you can still log in!
+            print(f"\n==========================================")
+            print(f" FALLBACK LOG: CODE FOR {user_email} IS [{code}]")
+            print(f"==========================================\n")
+
 def send_verification_email(user_email, code):
     """
-    Dispatches a high-end, styled HTML email containing the 2FA/Verification code.
-    Includes error handling and fallback logging.
+    Builds the email message and spawns a background thread to send it.
     """
-    logger.info(f"📧 Attempting to dispatch security protocol to: {user_email}")
+    logger.info(f"📧 Dispatching security protocol to: {user_email}")
     
-    try:
-        msg = Message(
-            subject="🔐 Your ANDSE Security Code",
-            sender=current_app.config.get('MAIL_USERNAME'),
-            recipients=[user_email]
-        )
-        
-        # Professional Neural-Themed Email Template
-        msg.html = f"""
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #030303; color: white; text-align: center;">
-            <div style="max-width: 550px; margin: 0 auto; background: #0f172a; padding: 50px; border-radius: 24px; border: 1px solid #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-                <h1 style="color: #38bdf8; font-size: 28px; margin-bottom: 5px; letter-spacing: -1px;">ANDSE AI</h1>
-                <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px;">Neural Identity Verification</p>
-                
-                <div style="padding: 20px; border: 1px dashed #334155; border-radius: 12px; background: #020617; margin: 30px 0;">
-                    <p style="color: #64748b; font-size: 12px; margin-bottom: 10px;">YOUR ACCESS CODE:</p>
-                    <span style="color: #0ea5e9; font-size: 42px; font-weight: 800; letter-spacing: 12px; font-family: monospace;">{code}</span>
-                </div>
-                
-                <p style="color: #475569; font-size: 12px; line-height: 1.6;">
-                    If you did not request this code, your neural link might be compromised. 
-                    Please ignore this message or contact security.
-                </p>
-                <div style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 20px;">
-                    <small style="color: #334155;">© 2026 ANDSE AI | Protocol: Secure-L3</small>
-                </div>
+    msg = Message(
+        subject="🔐 Your ANDSE Security Code",
+        sender=current_app.config.get('MAIL_USERNAME'),
+        recipients=[user_email]
+    )
+    
+    msg.html = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #030303; color: white; text-align: center;">
+        <div style="max-width: 550px; margin: 0 auto; background: #0f172a; padding: 50px; border-radius: 24px; border: 1px solid #1e293b; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <h1 style="color: #38bdf8; font-size: 28px; margin-bottom: 5px; letter-spacing: -1px;">ANDSE AI</h1>
+            <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px;">Neural Identity Verification</p>
+            
+            <div style="padding: 20px; border: 1px dashed #334155; border-radius: 12px; background: #020617; margin: 30px 0;">
+                <p style="color: #64748b; font-size: 12px; margin-bottom: 10px;">YOUR ACCESS CODE:</p>
+                <span style="color: #0ea5e9; font-size: 42px; font-weight: 800; letter-spacing: 12px; font-family: monospace;">{code}</span>
+            </div>
+            
+            <p style="color: #475569; font-size: 12px; line-height: 1.6;">
+                If you did not request this code, your neural link might be compromised. 
+                Please ignore this message or contact security.
+            </p>
+            <div style="margin-top: 40px; border-top: 1px solid #1e293b; padding-top: 20px;">
+                <small style="color: #334155;">© 2026 ANDSE AI | Protocol: Secure-L3</small>
             </div>
         </div>
-        """
-        mail.send(msg)
-        logger.info(f"✅ Security Code Successfully Delivered to {user_email}")
-        return True
-    except Exception as e:
-        logger.error(f"❌ CRITICAL EMAIL FAILURE: {str(e)}")
-        # We print the code to the console as a fallback for the developer
-        print(f"\n--- FALLBACK LOG: CODE FOR {user_email} IS {code} ---\n")
-        return False
+    </div>
+    """
+    
+    # Grab the true Flask app instance
+    app = current_app._get_current_object()
+    # Start the email process in the background
+    Thread(target=send_async_email, args=(app, msg, user_email, code)).start()
+    return True
 
 # ==========================================
 # OAUTH / GOOGLE FLOW
@@ -125,32 +128,26 @@ def send_verification_email(user_email, code):
 
 @auth_bp.route('/login/google')
 def google_login():
-    """Starts the Google OAuth 2.0 handshake."""
-    # Handle both local dev (http) and Render prod (https)
     scheme = 'https' if os.environ.get('RENDER') or request.headers.get('X-Forwarded-Proto') == 'https' else 'http'
     redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
     return oauth.google.authorize_redirect(redirect_uri, prompt='consent')
 
 @auth_bp.route('/login/google/callback')
 def google_callback():
-    """Handles the callback from Google after user authorization."""
     try:
         token = oauth.google.authorize_access_token()
         user_info = oauth.google.userinfo()
         email = user_info['email']
         
-        # Check if user exists, otherwise provision a new neural identity
         user = User.query.filter_by(email=email).first()
         
         if not user:
             logger.info(f"🆕 Provisioning new Google User: {email}")
-            # Generate a secure, complex placeholder for the password hash
             secure_pwd_stub = generate_password_hash(f"OAUTH_SECURE_{random.getrandbits(256)}")
             user = User(email=email, password_hash=secure_pwd_stub, is_verified=True)
             db.session.add(user)
             db.session.commit()
             
-            # Initialize User Settings
             db.session.add(UserSettings(user_id=user.id))
             db.session.commit()
             
@@ -169,7 +166,6 @@ def google_callback():
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """Initializes a new passwordless user protocol."""
     if current_user.is_authenticated:
         return redirect(url_for('chat.interface'))
         
@@ -184,10 +180,7 @@ def signup():
             flash('Identity already exists. Access Terminal instead.')
             return redirect(url_for('auth.login'))
         
-        # Security: Generate 6-digit numeric OTP
         verification_code = ''.join(random.choices(string.digits, k=6))
-        
-        # Create user with a dummy secure hash since passwords are no longer used
         secure_pwd_stub = generate_password_hash(f"PWDLESS_{random.getrandbits(256)}")
         
         new_user = User(
@@ -201,14 +194,11 @@ def signup():
             db.session.add(new_user)
             db.session.commit()
             
-            # Provision settings
             db.session.add(UserSettings(user_id=new_user.id))
             db.session.commit()
             
-            # Dispatch verification
             send_verification_email(email, verification_code)
             
-            # Set session state for verification page
             session['pending_email'] = email
             logger.info(f"📝 User Created: {email}. Verification pending.")
             return redirect(url_for('auth.verify_page'))
@@ -222,7 +212,6 @@ def signup():
 
 @auth_bp.route('/verify', methods=['GET', 'POST'])
 def verify_page():
-    """Handles the OTP / Email Verification stage for login and signup."""
     if 'pending_email' not in session:
         return redirect(url_for('auth.login'))
         
@@ -236,7 +225,6 @@ def verify_page():
             user.is_verified = True
             user.verification_code = None
             
-            # Record login timestamp
             if hasattr(user, 'last_login'):
                 user.last_login = datetime.utcnow() 
                 
@@ -253,17 +241,14 @@ def verify_page():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Entry point for the Passwordless Secure Neural Terminal."""
     if current_user.is_authenticated:
         return redirect(url_for('chat.interface'))
         
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        
         user = User.query.filter_by(email=email).first()
         
         if user:
-            # Generate new OTP and dispatch it
             session['pending_email'] = email
             new_otp = ''.join(random.choices(string.digits, k=6))
             user.verification_code = new_otp
@@ -281,21 +266,15 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    """Terminates the neural session."""
     user_email = current_user.email
     logout_user()
-    session.clear() # Clear all session data for security
+    session.clear() 
     logger.info(f"🔒 Session Terminated: {user_email}")
     return redirect(url_for('auth.login'))
-
-# ==========================================
-# STATUS & API (EXPERIMENTAL)
-# ==========================================
 
 @auth_bp.route('/api/status')
 @login_required
 def get_user_stats():
-    """Returns a JSON payload of user identity status."""
     return jsonify({
         "identity": current_user.email,
         "verified": current_user.is_verified,
