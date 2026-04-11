@@ -8,6 +8,7 @@ except ImportError:
 import os
 import sys
 import logging
+import importlib.util
 from flask import Flask, render_template, redirect, url_for, jsonify
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
@@ -16,7 +17,10 @@ from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # --- 2. SYSTEM PATH CONFIGURATION ---
-sys.path.append(os.getcwd())
+# We force the root and the chat folder into the system path
+BASE_DIR = os.path.abspath(os.getcwd())
+sys.path.append(BASE_DIR)
+sys.path.append(os.path.join(BASE_DIR, 'chat'))
 
 # --- 3. IMPORT EXTENSIONS & MODELS ---
 from extensions import db, socketio, mail
@@ -70,54 +74,59 @@ def create_app():
         return User.query.get(int(user_id))
 
     # --- 8. MANUAL BLUEPRINT REGISTRATION ---
-    # We are manually importing these because we now know exactly where they are.
+    # Register Auth
     try:
         from auth import auth_bp
         app.register_blueprint(auth_bp, url_prefix='/auth')
         logger.info("✅ Auth Blueprint Registered")
-        
-        # Try to configure OAuth if it's available in auth.py
+        from auth import configure_oauth
+        configure_oauth(app)
+    except Exception as e:
+        logger.error(f"❌ Auth Load Error: {e}")
+
+    # Register Chat (Manual File Discovery)
+    chat_bp = None
+    chat_path = os.path.join(BASE_DIR, 'chat', 'chat_manager.py')
+    
+    if os.path.exists(chat_path):
         try:
-            from auth import configure_oauth
-            configure_oauth(app)
-        except Exception:
-            logger.warning("⚠️ OAuth configuration skipped.")
-            
-    except ImportError as e:
-        logger.error(f"❌ CRITICAL: Could not load Auth module: {e}")
+            # This "spec" method manually loads the file even if it's not a package
+            spec = importlib.util.spec_from_file_location("chat_manager", chat_path)
+            chat_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(chat_module)
+            chat_bp = getattr(chat_module, 'chat_bp')
+            app.register_blueprint(chat_bp, url_prefix='/chat')
+            logger.info("🚀 SUCCESS: Chat Blueprint loaded manually from chat/chat_manager.py")
+        except Exception as e:
+            logger.error(f"❌ Manual Chat Load Failed: {e}")
+    else:
+        logger.error(f"❌ FILE NOT FOUND: Checked {chat_path}")
 
-    try:
-        # LOOKING IN THE 'chat' FOLDER FOR 'chat_manager'
-        from chat.chat_manager import chat_bp
-        app.register_blueprint(chat_bp, url_prefix='/chat')
-        logger.info("✅ Chat Blueprint Registered from chat/chat_manager.py")
-    except ImportError as e:
-        logger.error(f"⚠️ Chat module not found in chat/chat_manager.py: {e}")
-
-    # ==========================================
-    # 9. GLOBAL CORE ROUTES
-    # ==========================================
+    # --- 9. GLOBAL CORE ROUTES ---
     @app.route('/')
     def index():
         if current_user.is_authenticated:
-            # CHECK: If chat is connected, go there. Otherwise, show diagnostic.
-            if 'chat.interface' in [rule.endpoint for rule in app.url_map.iter_rules()]:
+            # Double check if the blueprint successfully registered
+            if 'chat' in app.blueprints:
                 return redirect(url_for('chat.interface'))
             else:
-                return """
+                return f"""
                 <body style="background:#050505; color:#fff; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; text-align:center; padding: 20px;">
-                    <div style="max-width: 500px; border: 1px solid #22c55e; padding: 40px; border-radius: 20px; background: #000;">
-                        <h1 style="color:#22c55e; margin-bottom: 10px;">✔ System Online</h1>
-                        <p style="font-size: 1.1rem;">Your identity is verified and the server is running.</p>
+                    <div style="max-width: 500px; border: 1px solid #ef4444; padding: 40px; border-radius: 20px; background: #000;">
+                        <h1 style="color:#ef4444; margin-bottom: 10px;">Diagnostic Mode</h1>
+                        <p style="font-size: 1.1rem;">The server is alive, but the Chat Module failed to load.</p>
                         <hr style="border: 0; border-top: 1px solid #333; margin: 20px 0;">
-                        <p style="color:#a1a1aa;">The app is still looking for <b>chat/chat_manager.py</b>.</p>
-                        <p style="color:#666; font-size: 0.9rem;">Make sure the file name is exactly lowercase and inside the 'chat' folder on GitHub.</p>
+                        <p style="color:#a1a1aa; text-align: left;"><b>Debug Info:</b></p>
+                        <ul style="color:#666; font-size: 0.8rem; text-align: left;">
+                            <li>Directory: {BASE_DIR}</li>
+                            <li>Chat File Exists: {os.path.exists(chat_path)}</li>
+                            <li>Path Searched: {chat_path}</li>
+                        </ul>
                     </div>
                 </body>
                 """
         return render_template('login.html')
 
-    # Database creation
     with app.app_context():
         db.create_all()
 
